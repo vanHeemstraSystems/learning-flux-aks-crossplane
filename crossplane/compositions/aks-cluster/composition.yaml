@@ -1,0 +1,212 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: aks-cluster-standard
+  labels:
+    provider: azure
+    cluster-type: aks
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.org/v1alpha1
+    kind: XAKSCluster
+  
+  writeConnectionSecretsToNamespace: crossplane-system
+  
+  resources:
+    # Resource Group
+    - name: resourcegroup
+      base:
+        apiVersion: azure.upbound.io/v1beta1
+        kind: ResourceGroup
+        spec:
+          forProvider:
+            tags:
+              managed-by: crossplane
+              created-by: composition
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "rg-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: status.resourceGroupName
+    
+    # Virtual Network
+    - name: virtualnetwork
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: VirtualNetwork
+        spec:
+          forProvider:
+            addressSpace:
+              - 10.0.0.0/16
+            tags:
+              managed-by: crossplane
+              created-by: composition
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "vnet-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.cluster
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.labels.cluster
+    
+    # Subnet
+    - name: subnet
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: Subnet
+        spec:
+          forProvider:
+            addressPrefixes:
+              - 10.0.1.0/24
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "snet-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.cluster
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.virtualNetworkNameSelector.matchLabels.cluster
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.labels.cluster
+    
+    # AKS Cluster
+    - name: akscluster
+      base:
+        apiVersion: containerservice.azure.upbound.io/v1beta1
+        kind: KubernetesCluster
+        spec:
+          forProvider:
+            defaultNodePool:
+              - name: system
+                enableAutoScaling: true
+                maxPods: 30
+            identity:
+              - type: SystemAssigned
+            networkProfile:
+              - networkPlugin: azure
+                networkPolicy: calico
+                serviceCidr: 10.2.0.0/16
+                dnsServiceIp: 10.2.0.10
+            oidcIssuerEnabled: true
+            workloadIdentityEnabled: true
+            tags:
+              managed-by: crossplane
+              created-by: composition
+          writeConnectionSecretToRef:
+            namespace: crossplane-system
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.dnsPrefix
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.cluster
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.kubernetesVersion
+          toFieldPath: spec.forProvider.kubernetesVersion
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkPlugin
+          toFieldPath: spec.forProvider.networkProfile[0].networkPlugin
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        
+        # Size-based node configuration
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.size
+          toFieldPath: spec.forProvider.defaultNodePool[0].vmSize
+          transforms:
+            - type: map
+              map:
+                small: Standard_D2s_v3
+                medium: Standard_D4s_v3
+                large: Standard_D8s_v3
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.size
+          toFieldPath: spec.forProvider.defaultNodePool[0].nodeCount
+          transforms:
+            - type: map
+              map:
+                small: 2
+                medium: 3
+                large: 5
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.size
+          toFieldPath: spec.forProvider.defaultNodePool[0].minCount
+          transforms:
+            - type: map
+              map:
+                small: 2
+                medium: 3
+                large: 3
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.size
+          toFieldPath: spec.forProvider.defaultNodePool[0].maxCount
+          transforms:
+            - type: map
+              map:
+                small: 5
+                medium: 10
+                large: 20
+        
+        # Subnet reference
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.forProvider.defaultNodePool[0].vnetSubnetIdSelector.matchLabels.cluster
+        
+        # Connection secret
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-kubeconfig"
+        
+        # Status
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.fqdn
+          toFieldPath: status.endpoint
+        
+        # Label for selectors
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.clusterName
+          toFieldPath: metadata.labels.cluster
