@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: crossplane-claims-examples
+  annotations:
+    description: Example Crossplane claims for learning and testing
+
+# These are examples - do not apply all at once in production!
+# Pick and choose based on your needs
+
+resources:
+  # Uncomment the examples you want to deploy
+  
+  # Simple resource group
+  # - resourcegroup-claim.yaml
+  
+  # Storage account (requires resource group)
+  # - storage-account-claim.yaml
+  
+  # Complete network setup (requires resource group)
+  # - network-claim.yaml
+  
+  # PostgreSQL database (requires resource group and network)
+  # - postgresql-claim.yaml
+
+# Note: Comment out resources you don't want to deploy
+# These examples have dependencies on each other:
+# 1. Start with resource group
+# 2. Then add network or storage
+# 3. Finally add database (if needed)
