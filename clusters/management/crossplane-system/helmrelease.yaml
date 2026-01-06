@@ -1,0 +1,65 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: crossplane
+  namespace: crossplane-system
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: crossplane
+      version: '>=1.14.0 <2.0.0'
+      sourceRef:
+        kind: HelmRepository
+        name: crossplane-stable
+        namespace: crossplane-system
+      interval: 1m
+  install:
+    crds: CreateReplace
+    createNamespace: false
+  upgrade:
+    crds: CreateReplace
+  values:
+    # Crossplane core configuration
+    replicas: 1
+    
+    # Resource requests and limits
+    resourcesCrossplane:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    
+    resourcesRBACManager:
+      limits:
+        cpu: 200m
+        memory: 512Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    
+    # Enable package manager
+    packageCache:
+      sizeLimit: 5Gi
+    
+    # Metrics and monitoring
+    metrics:
+      enabled: true
+    
+    # Arguments for crossplane controller
+    args:
+      - --debug
+      - --enable-composition-revisions
+      - --enable-environment-configs
+    
+    # Provider configuration
+    provider:
+      packages:
+        # Azure providers for comprehensive Azure resource management
+        - xpkg.upbound.io/upbound/provider-azure-network:v0.42.1
+        - xpkg.upbound.io/upbound/provider-azure-compute:v0.42.1
+        - xpkg.upbound.io/upbound/provider-azure-storage:v0.42.1
+        - xpkg.upbound.io/upbound/provider-azure-containerservice:v0.42.1
+        - xpkg.upbound.io/upbound/provider-azure-authorization:v0.42.1
