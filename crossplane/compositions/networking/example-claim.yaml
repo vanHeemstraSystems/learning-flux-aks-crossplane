@@ -1,0 +1,30 @@
+apiVersion: platform.example.org/v1alpha1
+kind: Network
+metadata:
+  name: prod-network
+  namespace: default
+spec:
+  parameters:
+    networkName: prod-network
+    location: West Europe
+    addressSpace: 10.1.0.0/16
+    
+    subnets:
+      workload:
+        enabled: true
+        cidr: 10.1.1.0/24
+      aks:
+        enabled: true
+        cidr: 10.1.10.0/24
+      database:
+        enabled: true
+        cidr: 10.1.20.0/24
+    
+    enableNSG: true
+    enableServiceEndpoints: true
+    environment: production
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure
+      network-type: standard
