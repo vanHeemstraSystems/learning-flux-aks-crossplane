@@ -1,0 +1,36 @@
+# Example Terraform Variables Configuration
+# Copy this file to terraform.tfvars and update with your values
+# DO NOT COMMIT terraform.tfvars - it should be in .gitignore
+
+# Required: Your Azure subscription ID
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# Resource configuration
+resource_group_name = "rg-flux-aks-learning"
+location            = "westeurope"
+cluster_name        = "aks-management"
+
+# Kubernetes configuration
+kubernetes_version = "1.28"
+
+# Node pool configuration
+node_count          = 2
+node_size           = "Standard_D2s_v3"
+enable_auto_scaling = true
+min_node_count      = 2
+max_node_count      = 5
+
+# Environment and tagging
+environment = "learning"
+owner       = "willem"
+
+# Optional: Azure Container Registry
+create_acr = false
+acr_name   = "acrfluxlearning"  # Must be globally unique
+
+# Additional custom tags (optional)
+tags = {
+  project     = "flux-crossplane-learning"
+  cost-center = "platform-engineering"
+  department  = "cloud-engineering"
+}
