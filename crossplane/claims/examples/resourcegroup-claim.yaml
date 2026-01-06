@@ -1,0 +1,16 @@
+apiVersion: azure.upbound.io/v1beta1
+kind: ResourceGroup
+metadata:
+  name: example-rg-claim
+  labels:
+    example: simple-claim
+    environment: dev
+spec:
+  forProvider:
+    location: West Europe
+    tags:
+      purpose: example
+      managed-by: crossplane
+      environment: dev
+  providerConfigRef:
+    name: default
