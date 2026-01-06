@@ -1,0 +1,281 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: postgresql-flexible
+  labels:
+    provider: azure
+    database-type: postgresql
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.org/v1alpha1
+    kind: XPostgreSQLInstance
+  
+  writeConnectionSecretsToNamespace: crossplane-system
+  
+  resources:
+    # Resource Group
+    - name: resourcegroup
+      base:
+        apiVersion: azure.upbound.io/v1beta1
+        kind: ResourceGroup
+        spec:
+          forProvider:
+            tags:
+              managed-by: crossplane
+              created-by: composition
+              component: database
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "rg-postgres-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.labels.database
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: status.resourceGroupName
+    
+    # PostgreSQL Flexible Server
+    - name: postgresql-server
+      base:
+        apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+        kind: FlexibleServer
+        spec:
+          forProvider:
+            # Authentication
+            authentication:
+              - passwordAuthEnabled: true
+            
+            # Backup
+            geoRedundantBackupEnabled: false
+            
+            # Storage
+            storageAutoGrow: true
+            
+            # Security
+            publicNetworkAccessEnabled: false
+            
+            tags:
+              managed-by: crossplane
+              created-by: composition
+          
+          writeConnectionSecretToRef:
+            namespace: crossplane-system
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.database
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.version
+          toFieldPath: spec.forProvider.version
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.adminUsername
+          toFieldPath: spec.forProvider.administratorLogin
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.adminPasswordSecretRef.name
+          toFieldPath: spec.forProvider.administratorPasswordSecretRef.name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.adminPasswordSecretRef.namespace
+          toFieldPath: spec.forProvider.administratorPasswordSecretRef.namespace
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.adminPasswordSecretRef.key
+          toFieldPath: spec.forProvider.administratorPasswordSecretRef.key
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.storageGB
+          toFieldPath: spec.forProvider.storageMb
+          transforms:
+            - type: math
+              math:
+                multiply: 1024
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.backupRetentionDays
+          toFieldPath: spec.forProvider.backupRetentionDays
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        
+        # Size-based SKU configuration
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.size
+          toFieldPath: spec.forProvider.skuName
+          transforms:
+            - type: map
+              map:
+                small: B_Standard_B1ms
+                medium: GP_Standard_D2s_v3
+                large: GP_Standard_D4s_v3
+        
+        # High availability
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.enableHighAvailability
+          toFieldPath: spec.forProvider.highAvailability
+          transforms:
+            - type: map
+              map:
+                "true":
+                  - mode: ZoneRedundant
+                "false": []
+        
+        # Network - delegated subnet reference
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkRef.name
+          toFieldPath: spec.forProvider.delegatedSubnetIdSelector.matchLabels.network
+        - type: CombineFromComposite
+          combine:
+            variables:
+              - fromFieldPath: spec.parameters.networkRef.name
+            strategy: string
+            string:
+              fmt: "database"
+          toFieldPath: spec.forProvider.delegatedSubnetIdSelector.matchLabels[subnet-type]
+        
+        # Connection secret
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-connection"
+        
+        # Status
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: status.serverName
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.fqdn
+          toFieldPath: status.fqdn
+        
+        # Label for selectors
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.labels.database
+    
+    # PostgreSQL Configuration - Require SSL
+    - name: postgresql-config-ssl
+      base:
+        apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+        kind: FlexibleServerConfiguration
+        spec:
+          forProvider:
+            name: require_secure_transport
+            value: "on"
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-config-ssl"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: spec.forProvider.serverIdSelector.matchLabels.database
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.labels.database
+    
+    # PostgreSQL Configuration - Connection Limit
+    - name: postgresql-config-connections
+      base:
+        apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+        kind: FlexibleServerConfiguration
+        spec:
+          forProvider:
+            name: max_connections
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-config-connections"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: spec.forProvider.serverIdSelector.matchLabels.database
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.size
+          toFieldPath: spec.forProvider.value
+          transforms:
+            - type: map
+              map:
+                small: "100"
+                medium: "200"
+                large: "400"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.labels.database
+    
+    # Database 1 (from databases array - first database)
+    - name: database-1
+      base:
+        apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+        kind: FlexibleServerDatabase
+        spec:
+          forProvider:
+            charset: UTF8
+            collation: en_US.utf8
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.databases[0].name
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "db-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.databases[0].name
+          toFieldPath: spec.forProvider.name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: spec.forProvider.serverIdSelector.matchLabels.database
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.databases[0].charset
+          toFieldPath: spec.forProvider.charset
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.databases[0].collation
+          toFieldPath: spec.forProvider.collation
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.labels.database
+    
+    # Firewall Rule - Allow Azure Services
+    - name: firewall-rule-azure
+      base:
+        apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+        kind: FlexibleServerFirewallRule
+        spec:
+          forProvider:
+            startIpAddress: "0.0.0.0"
+            endIpAddress: "0.0.0.0"
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-fw-azure-services"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: spec.forProvider.serverIdSelector.matchLabels.database
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.instanceName
+          toFieldPath: metadata.labels.database
