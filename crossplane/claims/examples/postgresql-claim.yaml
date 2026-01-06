@@ -1,0 +1,85 @@
+---
+# PostgreSQL Server
+apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+kind: Server
+metadata:
+  name: example-postgres-claim
+  labels:
+    example: database-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    location: West Europe
+    
+    # Server configuration
+    version: "14"
+    skuName: B_Gen5_1  # Basic tier, Gen5, 1 vCore
+    
+    # Storage
+    storageMb: 5120  # 5 GB
+    backupRetentionDays: 7
+    geoRedundantBackupEnabled: false
+    autoGrowEnabled: true
+    
+    # Security
+    sslEnforcementEnabled: true
+    sslMinimalTlsVersionEnforced: TLS1_2
+    publicNetworkAccessEnabled: false
+    
+    # Administrator credentials (should use secret in production)
+    administratorLogin: psqladmin
+    administratorLoginPasswordSecretRef:
+      name: postgres-admin-password
+      namespace: crossplane-system
+      key: password
+    
+    tags:
+      purpose: example
+      managed-by: crossplane
+      environment: dev
+      
+  providerConfigRef:
+    name: default
+
+---
+# PostgreSQL Database
+apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+kind: Database
+metadata:
+  name: example-db-claim
+  labels:
+    example: database-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    serverName: example-postgres-claim
+    charset: UTF8
+    collation: en_US.utf8
+  providerConfigRef:
+    name: default
+
+---
+# Firewall Rule (for testing - restrict in production)
+apiVersion: dbforpostgresql.azure.upbound.io/v1beta1
+kind: FirewallRule
+metadata:
+  name: example-postgres-firewall-claim
+  labels:
+    example: database-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    serverName: example-postgres-claim
+    startIpAddress: "0.0.0.0"
+    endIpAddress: "0.0.0.0"  # Azure services only
+  providerConfigRef:
+    name: default
+
+---
+# Secret for PostgreSQL password (create this manually first)
+# kubectl create secret generic postgres-admin-password \
+#   -n crossplane-system \
+#   --from-literal=password='YourSecurePassword123!'
