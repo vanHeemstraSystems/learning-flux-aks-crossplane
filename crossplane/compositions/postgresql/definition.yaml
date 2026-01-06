@@ -1,0 +1,171 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xpostgresqlinstances.platform.example.org
+spec:
+  group: platform.example.org
+  names:
+    kind: XPostgreSQLInstance
+    plural: xpostgresqlinstances
+  claimNames:
+    kind: PostgreSQLInstance
+    plural: postgresqlinstances
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    # Database identification
+                    instanceName:
+                      type: string
+                      description: Name of the PostgreSQL instance
+                    
+                    # Location
+                    location:
+                      type: string
+                      description: Azure region
+                      default: West Europe
+                      enum:
+                        - West Europe
+                        - North Europe
+                        - East US
+                        - West US
+                    
+                    # Size configuration
+                    size:
+                      type: string
+                      description: Database size (small, medium, large)
+                      enum:
+                        - small
+                        - medium
+                        - large
+                      default: small
+                    
+                    # PostgreSQL version
+                    version:
+                      type: string
+                      description: PostgreSQL version
+                      default: "14"
+                      enum:
+                        - "11"
+                        - "12"
+                        - "13"
+                        - "14"
+                        - "15"
+                    
+                    # Storage
+                    storageGB:
+                      type: integer
+                      description: Storage size in GB
+                      default: 32
+                      minimum: 32
+                      maximum: 16384
+                    
+                    # Backup retention
+                    backupRetentionDays:
+                      type: integer
+                      description: Backup retention in days
+                      default: 7
+                      minimum: 7
+                      maximum: 35
+                    
+                    # High availability
+                    enableHighAvailability:
+                      type: boolean
+                      description: Enable high availability
+                      default: false
+                    
+                    # Network configuration
+                    networkRef:
+                      type: object
+                      description: Reference to existing Network
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                    
+                    # Administrator credentials
+                    adminUsername:
+                      type: string
+                      description: Administrator username
+                      default: psqladmin
+                    
+                    adminPasswordSecretRef:
+                      type: object
+                      description: Reference to secret containing admin password
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                        key:
+                          type: string
+                          default: password
+                      required:
+                        - name
+                        - namespace
+                    
+                    # Databases to create
+                    databases:
+                      type: array
+                      description: List of databases to create
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          charset:
+                            type: string
+                            default: UTF8
+                          collation:
+                            type: string
+                            default: en_US.utf8
+                        required:
+                          - name
+                      default:
+                        - name: appdb
+                          charset: UTF8
+                          collation: en_US.utf8
+                    
+                    # Environment
+                    environment:
+                      type: string
+                      description: Environment (dev, staging, production)
+                      enum:
+                        - dev
+                        - staging
+                        - production
+                      default: dev
+                  
+                  required:
+                    - instanceName
+                    - adminPasswordSecretRef
+              
+              required:
+                - parameters
+            
+            status:
+              type: object
+              properties:
+                serverName:
+                  description: PostgreSQL server name
+                  type: string
+                fqdn:
+                  description: Fully qualified domain name
+                  type: string
+                resourceGroupName:
+                  description: Resource group name
+                  type: string
+                connectionString:
+                  description: Connection string template
+                  type: string
