@@ -1,1 +1,72 @@
+---
+# Upbound Azure Provider - Family (Recommended)
+# This is the official provider family from Upbound
+# Automatically installs all required sub-providers
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: upbound-provider-family-azure
+spec:
+  package: xpkg.upbound.io/upbound/provider-family-azure:v0.42.1
+  packagePullPolicy: IfNotPresent
+
+---
+# Alternative: Individual Providers (for granular control)
+# Uncomment if you want to install only specific providers
+
+# # Core Azure Provider
+# apiVersion: pkg.crossplane.io/v1
+# kind: Provider
+# metadata:
+#   name: provider-azure
+# spec:
+#   package: xpkg.upbound.io/upbound/provider-azure:v0.42.1
+
+# # Network Provider
+# apiVersion: pkg.crossplane.io/v1
+# kind: Provider
+# metadata:
+#   name: provider-azure-network
+# spec:
+#   package: xpkg.upbound.io/upbound/provider-azure-network:v0.42.1
+
+# # Compute Provider
+# apiVersion: pkg.crossplane.io/v1
+# kind: Provider
+# metadata:
+#   name: provider-azure-compute
+# spec:
+#   package: xpkg.upbound.io/upbound/provider-azure-compute:v0.42.1
+
+# # Container Service Provider (AKS)
+# apiVersion: pkg.crossplane.io/v1
+# kind: Provider
+# metadata:
+#   name: provider-azure-containerservice
+# spec:
+#   package: xpkg.upbound.io/upbound/provider-azure-containerservice:v0.42.1
+
+# # Database Provider
+# apiVersion: pkg.crossplane.io/v1
+# kind: Provider
+# metadata:
+#   name: provider-azure-dbforpostgresql
+# spec:
+#   package: xpkg.upbound.io/upbound/provider-azure-dbforpostgresql:v0.42.1
+
+# # Storage Provider
+# apiVersion: pkg.crossplane.io/v1
+# kind: Provider
+# metadata:
+#   name: provider-azure-storage
+# spec:
+#   package: xpkg.upbound.io/upbound/provider-azure-storage:v0.42.1
+
+# # Authorization Provider (RBAC)
+# apiVersion: pkg.crossplane.io/v1
+# kind: Provider
+# metadata:
+#   name: provider-azure-authorization
+# spec:
+#   package: xpkg.upbound.io/upbound/provider-azure-authorization:v0.42.1
 
