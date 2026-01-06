@@ -1,0 +1,22 @@
+apiVersion: platform.example.org/v1alpha1
+kind: AKSCluster
+metadata:
+  name: dev-cluster-001
+  namespace: default
+spec:
+  parameters:
+    clusterName: dev-cluster-001
+    size: small
+    location: West Europe
+    kubernetesVersion: "1.28"
+    networkPlugin: azure
+    environment: dev
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure
+      cluster-type: aks
+  
+  writeConnectionSecretToRef:
+    name: dev-cluster-001-kubeconfig
+    namespace: default
