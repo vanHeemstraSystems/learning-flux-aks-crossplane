@@ -1,0 +1,15 @@
+apiVersion: azure.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  # Use service principal credentials stored in Kubernetes secret
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: azure-credentials
+      key: credentials
+  
+  # Optional: Specify subscription ID explicitly
+  # subscriptionID: "your-subscription-id-here"
