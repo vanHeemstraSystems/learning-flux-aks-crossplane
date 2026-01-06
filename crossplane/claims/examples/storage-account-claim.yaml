@@ -1,0 +1,40 @@
+apiVersion: storage.azure.upbound.io/v1beta1
+kind: Account
+metadata:
+  name: example-storage-claim
+  labels:
+    example: storage-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    location: West Europe
+    accountTier: Standard
+    accountReplicationType: LRS
+    
+    # Storage configuration
+    accountKind: StorageV2
+    accessTier: Hot
+    enableHttpsTrafficOnly: true
+    minTlsVersion: TLS1_2
+    
+    # Security settings
+    allowBlobPublicAccess: false
+    infrastructureEncryptionEnabled: true
+    
+    # Networking
+    networkRules:
+      - defaultAction: Deny
+        bypass:
+          - AzureServices
+        ipRules:
+          - value: "0.0.0.0/0"  # Replace with your IP range
+            action: Allow
+    
+    tags:
+      purpose: example
+      managed-by: crossplane
+      environment: dev
+      
+  providerConfigRef:
+    name: default
