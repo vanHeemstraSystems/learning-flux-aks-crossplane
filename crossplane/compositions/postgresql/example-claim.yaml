@@ -1,0 +1,45 @@
+apiVersion: platform.example.org/v1alpha1
+kind: PostgreSQLInstance
+metadata:
+  name: app-database
+  namespace: default
+spec:
+  parameters:
+    instanceName: app-database
+    location: West Europe
+    size: small
+    version: "14"
+    
+    # Storage and backup
+    storageGB: 64
+    backupRetentionDays: 14
+    enableHighAvailability: false
+    
+    # Network - reference existing network
+    networkRef:
+      name: prod-network
+      namespace: default
+    
+    # Administrator credentials
+    adminUsername: dbadmin
+    adminPasswordSecretRef:
+      name: postgres-admin-password
+      namespace: default
+      key: password
+    
+    # Databases to create
+    databases:
+      - name: appdb
+        charset: UTF8
+        collation: en_US.utf8
+    
+    environment: production
+  
+  compositionSelector:
+    matchLabels:
+      provider: azure
+      database-type: postgresql
+  
+  writeConnectionSecretToRef:
+    name: app-database-connection
+    namespace: default
