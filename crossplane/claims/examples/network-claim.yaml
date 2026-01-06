@@ -1,0 +1,124 @@
+---
+# Virtual Network
+apiVersion: network.azure.upbound.io/v1beta1
+kind: VirtualNetwork
+metadata:
+  name: example-vnet-claim
+  labels:
+    example: network-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    location: West Europe
+    addressSpace:
+      - 10.100.0.0/16
+    tags:
+      purpose: example
+      managed-by: crossplane
+      environment: dev
+  providerConfigRef:
+    name: default
+
+---
+# Subnet for workloads
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+  name: example-workload-subnet-claim
+  labels:
+    example: network-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    virtualNetworkName: example-vnet-claim
+    addressPrefixes:
+      - 10.100.1.0/24
+    serviceEndpoints:
+      - Microsoft.Storage
+      - Microsoft.Sql
+  providerConfigRef:
+    name: default
+
+---
+# Subnet for AKS
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+  name: example-aks-subnet-claim
+  labels:
+    example: network-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    virtualNetworkName: example-vnet-claim
+    addressPrefixes:
+      - 10.100.10.0/24
+  providerConfigRef:
+    name: default
+
+---
+# Network Security Group
+apiVersion: network.azure.upbound.io/v1beta1
+kind: SecurityGroup
+metadata:
+  name: example-nsg-claim
+  labels:
+    example: network-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    location: West Europe
+    tags:
+      purpose: example
+      managed-by: crossplane
+      environment: dev
+  providerConfigRef:
+    name: default
+
+---
+# NSG Rule - Allow HTTPS
+apiVersion: network.azure.upbound.io/v1beta1
+kind: SecurityRule
+metadata:
+  name: example-allow-https-claim
+  labels:
+    example: network-claim
+    environment: dev
+spec:
+  forProvider:
+    resourceGroupName: example-rg-claim
+    networkSecurityGroupName: example-nsg-claim
+    priority: 100
+    direction: Inbound
+    access: Allow
+    protocol: Tcp
+    sourcePortRange: "*"
+    destinationPortRange: "443"
+    sourceAddressPrefix: Internet
+    destinationAddressPrefix: "*"
+  providerConfigRef:
+    name: default
+
+---
+# Associate NSG with Subnet
+apiVersion: network.azure.upbound.io/v1beta1
+kind: SubnetNetworkSecurityGroupAssociation
+metadata:
+  name: example-subnet-nsg-association
+  labels:
+    example: network-claim
+    environment: dev
+spec:
+  forProvider:
+    subnetIdSelector:
+      matchLabels:
+        example: network-claim
+    networkSecurityGroupIdSelector:
+      matchLabels:
+        example: network-claim
+  providerConfigRef:
+    name: default
