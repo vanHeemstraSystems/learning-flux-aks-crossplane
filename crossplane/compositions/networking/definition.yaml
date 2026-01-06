@@ -1,0 +1,125 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xnetworks.platform.example.org
+spec:
+  group: platform.example.org
+  names:
+    kind: XNetwork
+    plural: xnetworks
+  claimNames:
+    kind: Network
+    plural: networks
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    # Network identification
+                    networkName:
+                      type: string
+                      description: Name of the network
+                    
+                    # Location
+                    location:
+                      type: string
+                      description: Azure region
+                      default: West Europe
+                      enum:
+                        - West Europe
+                        - North Europe
+                        - East US
+                        - West US
+                    
+                    # Address space
+                    addressSpace:
+                      type: string
+                      description: VNet CIDR (10.0.0.0/16, 10.1.0.0/16, etc)
+                      default: 10.0.0.0/16
+                      pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$'
+                    
+                    # Subnet configuration
+                    subnets:
+                      type: object
+                      description: Subnet definitions
+                      properties:
+                        workload:
+                          type: object
+                          properties:
+                            enabled:
+                              type: boolean
+                              default: true
+                            cidr:
+                              type: string
+                              default: 10.0.1.0/24
+                        aks:
+                          type: object
+                          properties:
+                            enabled:
+                              type: boolean
+                              default: true
+                            cidr:
+                              type: string
+                              default: 10.0.10.0/24
+                        database:
+                          type: object
+                          properties:
+                            enabled:
+                              type: boolean
+                              default: false
+                            cidr:
+                              type: string
+                              default: 10.0.20.0/24
+                    
+                    # Security
+                    enableNSG:
+                      type: boolean
+                      description: Enable Network Security Group
+                      default: true
+                    
+                    # Service endpoints
+                    enableServiceEndpoints:
+                      type: boolean
+                      description: Enable service endpoints for Azure services
+                      default: true
+                    
+                    # Environment
+                    environment:
+                      type: string
+                      description: Environment (dev, staging, production)
+                      enum:
+                        - dev
+                        - staging
+                        - production
+                      default: dev
+                  
+                  required:
+                    - networkName
+              
+              required:
+                - parameters
+            
+            status:
+              type: object
+              properties:
+                vnetId:
+                  description: Virtual Network resource ID
+                  type: string
+                resourceGroupName:
+                  description: Resource group name
+                  type: string
+                workloadSubnetId:
+                  description: Workload subnet ID
+                  type: string
+                aksSubnetId:
+                  description: AKS subnet ID
+                  type: string
