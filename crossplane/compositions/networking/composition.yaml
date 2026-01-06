@@ -1,0 +1,324 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: network-standard
+  labels:
+    provider: azure
+    network-type: standard
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.org/v1alpha1
+    kind: XNetwork
+  
+  resources:
+    # Resource Group
+    - name: resourcegroup
+      base:
+        apiVersion: azure.upbound.io/v1beta1
+        kind: ResourceGroup
+        spec:
+          forProvider:
+            tags:
+              managed-by: crossplane
+              created-by: composition
+              component: networking
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "rg-network-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: status.resourceGroupName
+    
+    # Virtual Network
+    - name: virtualnetwork
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: VirtualNetwork
+        spec:
+          forProvider:
+            tags:
+              managed-by: crossplane
+              created-by: composition
+              component: networking
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "vnet-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.addressSpace
+          toFieldPath: spec.forProvider.addressSpace[0]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.id
+          toFieldPath: status.vnetId
+    
+    # Workload Subnet
+    - name: workload-subnet
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: Subnet
+        metadata:
+          labels:
+            subnet-type: workload
+        spec:
+          forProvider:
+            serviceEndpoints: []
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "snet-%s-workload"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.virtualNetworkNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.subnets.workload.cidr
+          toFieldPath: spec.forProvider.addressPrefixes[0]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.enableServiceEndpoints
+          toFieldPath: spec.forProvider.serviceEndpoints
+          transforms:
+            - type: map
+              map:
+                "true": 
+                  - Microsoft.Storage
+                  - Microsoft.Sql
+                  - Microsoft.KeyVault
+                "false": []
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.id
+          toFieldPath: status.workloadSubnetId
+    
+    # AKS Subnet
+    - name: aks-subnet
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: Subnet
+        metadata:
+          labels:
+            subnet-type: aks
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "snet-%s-aks"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.virtualNetworkNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.subnets.aks.cidr
+          toFieldPath: spec.forProvider.addressPrefixes[0]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.id
+          toFieldPath: status.aksSubnetId
+    
+    # Database Subnet (conditional based on enabled flag)
+    - name: database-subnet
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: Subnet
+        metadata:
+          labels:
+            subnet-type: database
+        spec:
+          forProvider:
+            serviceEndpoints:
+              - Microsoft.Sql
+            delegations:
+              - name: postgres
+                serviceDelegation:
+                  - name: Microsoft.DBforPostgreSQL/flexibleServers
+                    actions:
+                      - Microsoft.Network/virtualNetworks/subnets/join/action
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "snet-%s-database"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.virtualNetworkNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.subnets.database.cidr
+          toFieldPath: spec.forProvider.addressPrefixes[0]
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+    
+    # Network Security Group
+    - name: nsg
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: SecurityGroup
+        spec:
+          forProvider:
+            tags:
+              managed-by: crossplane
+              created-by: composition
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "nsg-%s"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.location
+          toFieldPath: spec.forProvider.location
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.environment
+          toFieldPath: spec.forProvider.tags.environment
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+    
+    # NSG Rule - Allow HTTPS Inbound
+    - name: nsg-rule-https
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: SecurityRule
+        spec:
+          forProvider:
+            priority: 100
+            direction: Inbound
+            access: Allow
+            protocol: Tcp
+            sourcePortRange: "*"
+            destinationPortRange: "443"
+            sourceAddressPrefix: Internet
+            destinationAddressPrefix: "*"
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "nsg-rule-%s-allow-https"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.networkSecurityGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+    
+    # NSG Rule - Allow HTTP Inbound
+    - name: nsg-rule-http
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: SecurityRule
+        spec:
+          forProvider:
+            priority: 110
+            direction: Inbound
+            access: Allow
+            protocol: Tcp
+            sourcePortRange: "*"
+            destinationPortRange: "80"
+            sourceAddressPrefix: Internet
+            destinationAddressPrefix: "*"
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "nsg-rule-%s-allow-http"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.resourceGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.networkSecurityGroupNameSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.labels.network
+    
+    # Associate NSG with Workload Subnet
+    - name: nsg-workload-association
+      base:
+        apiVersion: network.azure.upbound.io/v1beta1
+        kind: SubnetNetworkSecurityGroupAssociation
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "nsg-assoc-%s-workload"
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.subnetIdSelector.matchLabels.network
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.parameters.networkName
+          toFieldPath: spec.forProvider.networkSecurityGroupIdSelector.matchLabels.network
+        - type: CombineFromComposite
+          combine:
+            variables:
+              - fromFieldPath: spec.parameters.networkName
+            strategy: string
+            string:
+              fmt: "workload"
+          toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[subnet-type]
