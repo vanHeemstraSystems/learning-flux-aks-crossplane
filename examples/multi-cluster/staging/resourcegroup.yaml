@@ -1,0 +1,15 @@
+apiVersion: azure.upbound.io/v1beta1
+kind: ResourceGroup
+metadata:
+name: rg-aks-staging
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: staging
+spec:
+forProvider:
+location: West Europe
+tags:
+managed-by: crossplane
+environment: staging
+purpose: aks-staging
+cost-center: staging
