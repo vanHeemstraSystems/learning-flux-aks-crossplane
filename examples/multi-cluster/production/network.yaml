@@ -1,0 +1,64 @@
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: VirtualNetwork
+metadata:
+name: vnet-aks-production
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: production
+spec:
+forProvider:
+addressSpace:
+- 10.30.0.0/16
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+environment: production
+tags:
+managed-by: crossplane
+environment: production
+purpose: aks-networking
+criticality: high
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-production-default
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: production
+purpose: default
+spec:
+forProvider:
+addressPrefixes:
+- 10.30.0.0/24
+resourceGroupNameSelector:
+matchLabels:
+environment: production
+virtualNetworkNameSelector:
+matchLabels:
+environment: production
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-production-aks
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: production
+purpose: aks
+spec:
+forProvider:
+addressPrefixes:
+- 10.30.1.0/24
+resourceGroupNameSelector:
+matchLabels:
+environment: production
+virtualNetworkNameSelector:
+matchLabels:
+environment: production
