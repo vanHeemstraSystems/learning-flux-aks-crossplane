@@ -1,0 +1,63 @@
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: VirtualNetwork
+metadata:
+name: vnet-aks-dev
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: dev
+spec:
+forProvider:
+addressSpace:
+- 10.10.0.0/16
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+environment: dev
+tags:
+managed-by: crossplane
+environment: dev
+purpose: aks-networking
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-dev-default
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: dev
+purpose: default
+spec:
+forProvider:
+addressPrefixes:
+- 10.10.0.0/24
+resourceGroupNameSelector:
+matchLabels:
+environment: dev
+virtualNetworkNameSelector:
+matchLabels:
+environment: dev
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-dev-aks
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: dev
+purpose: aks
+spec:
+forProvider:
+addressPrefixes:
+- 10.10.1.0/24
+resourceGroupNameSelector:
+matchLabels:
+environment: dev
+virtualNetworkNameSelector:
+matchLabels:
+environment: dev
