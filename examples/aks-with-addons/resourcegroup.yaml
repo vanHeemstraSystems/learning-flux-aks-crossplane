@@ -1,0 +1,15 @@
+apiVersion: azure.upbound.io/v1beta1
+kind: ResourceGroup
+metadata:
+name: rg-aks-addons-001
+labels:
+example: aks-with-addons
+environment: development
+spec:
+forProvider:
+location: West Europe
+tags:
+managed-by: crossplane
+example: aks-with-addons
+purpose: aks-cluster-with-monitoring
+cost-center: platform-engineering
