@@ -1,0 +1,63 @@
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: VirtualNetwork
+metadata:
+name: vnet-aks-staging
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: staging
+spec:
+forProvider:
+addressSpace:
+- 10.20.0.0/16
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+environment: staging
+tags:
+managed-by: crossplane
+environment: staging
+purpose: aks-networking
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-staging-default
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: staging
+purpose: default
+spec:
+forProvider:
+addressPrefixes:
+- 10.20.0.0/24
+resourceGroupNameSelector:
+matchLabels:
+environment: staging
+virtualNetworkNameSelector:
+matchLabels:
+environment: staging
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-staging-aks
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: staging
+purpose: aks
+spec:
+forProvider:
+addressPrefixes:
+- 10.20.1.0/24
+resourceGroupNameSelector:
+matchLabels:
+environment: staging
+virtualNetworkNameSelector:
+matchLabels:
+environment: staging
