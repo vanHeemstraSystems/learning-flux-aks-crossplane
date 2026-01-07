@@ -1,0 +1,15 @@
+apiVersion: azure.upbound.io/v1beta1
+kind: ResourceGroup
+metadata:
+name: rg-aks-dev
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: dev
+spec:
+forProvider:
+location: West Europe
+tags:
+managed-by: crossplane
+environment: dev
+purpose: aks-development
+cost-center: development
