@@ -1,0 +1,62 @@
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-default
+labels:
+example: aks-with-addons
+purpose: default
+spec:
+forProvider:
+addressPrefixes:
+- 10.1.0.0/24
+resourceGroupNameSelector:
+matchLabels:
+example: aks-with-addons
+virtualNetworkNameSelector:
+matchLabels:
+example: aks-with-addons
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-aks
+labels:
+example: aks-with-addons
+purpose: aks
+spec:
+forProvider:
+addressPrefixes:
+- 10.1.1.0/24
+resourceGroupNameSelector:
+matchLabels:
+example: aks-with-addons
+virtualNetworkNameSelector:
+matchLabels:
+example: aks-with-addons
+
+-----
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-azure-services
+labels:
+example: aks-with-addons
+purpose: azure-services
+spec:
+forProvider:
+addressPrefixes:
+- 10.1.2.0/24
+resourceGroupNameSelector:
+matchLabels:
+example: aks-with-addons
+virtualNetworkNameSelector:
+matchLabels:
+example: aks-with-addons
+serviceEndpoints:
+- Microsoft.KeyVault
+- Microsoft.Storage
