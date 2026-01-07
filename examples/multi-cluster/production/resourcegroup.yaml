@@ -1,0 +1,16 @@
+apiVersion: azure.upbound.io/v1beta1
+kind: ResourceGroup
+metadata:
+name: rg-aks-production
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: production
+spec:
+forProvider:
+location: West Europe
+tags:
+managed-by: crossplane
+environment: production
+purpose: aks-production
+cost-center: production
+criticality: high
