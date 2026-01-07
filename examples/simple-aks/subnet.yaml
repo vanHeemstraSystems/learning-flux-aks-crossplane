@@ -1,0 +1,42 @@
+-----
+
+## apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-default
+labels:
+example: simple-aks
+environment: development
+spec:
+forProvider:
+addressPrefixes:
+- 10.0.0.0/24
+resourceGroupNameSelector:
+matchLabels:
+example: simple-aks
+virtualNetworkNameSelector:
+matchLabels:
+example: simple-aks
+providerConfigRef:
+name: default
+
+apiVersion: network.azure.upbound.io/v1beta1
+kind: Subnet
+metadata:
+name: subnet-aks
+labels:
+example: simple-aks
+environment: development
+purpose: aks
+spec:
+forProvider:
+addressPrefixes:
+- 10.0.1.0/24
+resourceGroupNameSelector:
+matchLabels:
+example: simple-aks
+virtualNetworkNameSelector:
+matchLabels:
+example: simple-aks
+providerConfigRef:
+name: default
