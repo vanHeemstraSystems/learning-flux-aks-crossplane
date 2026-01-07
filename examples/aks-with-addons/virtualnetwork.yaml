@@ -1,0 +1,18 @@
+apiVersion: network.azure.upbound.io/v1beta1
+kind: VirtualNetwork
+metadata:
+name: vnet-aks-addons
+labels:
+example: aks-with-addons
+spec:
+forProvider:
+addressSpace:
+- 10.1.0.0/16
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+example: aks-with-addons
+tags:
+managed-by: crossplane
+example: aks-with-addons
+purpose: aks-networking
