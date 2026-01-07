@@ -1,0 +1,67 @@
+apiVersion: containerservice.azure.upbound.io/v1beta1
+kind: KubernetesCluster
+metadata:
+name: aks-staging-001
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: staging
+spec:
+forProvider:
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+environment: staging
+
+```
+dnsPrefix: aks-staging-001
+kubernetesVersion: "1.28"
+
+# Medium node pool for staging
+defaultNodePool:
+  - name: system
+    nodeCount: 3
+    vmSize: Standard_D4s_v3
+    enableAutoScaling: true
+    minCount: 3
+    maxCount: 5
+    osDiskSizeGb: 64
+    vnetSubnetIdSelector:
+      matchLabels:
+        environment: staging
+        purpose: aks
+
+# System-assigned managed identity
+identity:
+  - type: SystemAssigned
+
+# Network profile
+networkProfile:
+  - networkPlugin: azure
+    networkPolicy: calico
+    dnsServiceIp: 10.22.0.10
+    serviceCidr: 10.22.0.0/24
+    loadBalancerSku: standard
+
+# Basic add-ons for staging
+addonProfile:
+  - httpApplicationRouting:
+      - enabled: false
+    omsAgent:
+      - enabled: false
+    azurePolicy:
+      - enabled: false
+
+tags:
+  managed-by: crossplane
+  environment: staging
+  purpose: pre-production
+```
+
+providerConfigRef:
+name: default
+
+# Write kubeconfig to secret
+
+writeConnectionSecretToRef:
+name: aks-staging-001-kubeconfig
+namespace: default
