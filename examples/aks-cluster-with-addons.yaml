@@ -1,0 +1,131 @@
+apiVersion: containerservice.azure.upbound.io/v1beta1
+kind: KubernetesCluster
+metadata:
+name: aks-addons-001
+labels:
+example: aks-with-addons
+spec:
+forProvider:
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+example: aks-with-addons
+
+```
+dnsPrefix: aks-addons-001
+kubernetesVersion: "1.28"
+
+# Default node pool - system workloads
+defaultNodePool:
+  - name: system
+    nodeCount: 3
+    vmSize: Standard_D4s_v3
+    enableAutoScaling: true
+    minCount: 3
+    maxCount: 5
+    osDiskSizeGb: 128
+    osDiskType: Managed
+    vnetSubnetIdSelector:
+      matchLabels:
+        example: aks-with-addons
+        purpose: aks
+    onlyCriticalAddonsEnabled: true
+    kubeletDiskType: OS
+    type: VirtualMachineScaleSets
+    tags:
+      nodepool: system
+      managed-by: crossplane
+
+# System-assigned managed identity
+identity:
+  - type: SystemAssigned
+
+# Network profile with Azure CNI and Calico
+networkProfile:
+  - networkPlugin: azure
+    networkPolicy: calico
+    dnsServiceIp: 10.2.0.10
+    serviceCidr: 10.2.0.0/24
+    loadBalancerSku: standard
+    outboundType: loadBalancer
+
+# Enable Workload Identity and OIDC Issuer
+oidcIssuerEnabled: true
+workloadIdentityEnabled: true
+
+# Azure Active Directory Integration
+azureActiveDirectoryRoleBasedAccessControl:
+  - managed: true
+    azureRbacEnabled: true
+
+# Add-on Profile - Enable multiple add-ons
+addonProfile:
+  # Azure Monitor Container Insights
+  - omsAgent:
+      - enabled: true
+        logAnalyticsWorkspaceIdSelector:
+          matchLabels:
+            example: aks-with-addons
+    
+    # Azure Policy
+    azurePolicy:
+      - enabled: true
+    
+    # Azure Key Vault Secrets Provider
+    azureKeyvaultSecretsProvider:
+      - enabled: true
+        secretRotationEnabled: true
+        secretRotationInterval: "2m"
+    
+    # Web Application Routing (Managed NGINX Ingress)
+    webAppRouting:
+      - enabled: true
+    
+    # Disable HTTP Application Routing (deprecated)
+    httpApplicationRouting:
+      - enabled: false
+
+# Auto-scaler profile
+autoScalerProfile:
+  - balanceSimilarNodeGroups: false
+    expander: random
+    maxGracefulTerminationSec: 600
+    maxNodeProvisionTime: 15m
+    maxUnreadyNodes: 3
+    maxUnreadyPercentage: 45
+    newPodScaleUpDelay: 10s
+    scaleDownDelayAfterAdd: 10m
+    scaleDownDelayAfterDelete: 10s
+    scaleDownDelayAfterFailure: 3m
+    scaleDownUnneeded: 10m
+    scaleDownUnready: 20m
+    scaleDownUtilizationThreshold: 0.5
+    scanInterval: 10s
+    skipNodesWithLocalStorage: false
+    skipNodesWithSystemPods: true
+
+# Maintenance window
+maintenanceWindow:
+  - allowed:
+      - day: Sunday
+        hours:
+          - 2
+          - 3
+          - 4
+
+tags:
+  managed-by: crossplane
+  example: aks-with-addons
+  monitoring: enabled
+  policy: enabled
+  workload-identity: enabled
+```
+
+providerConfigRef:
+name: default
+
+# Write kubeconfig to secret
+
+writeConnectionSecretToRef:
+name: aks-addons-001-kubeconfig
+namespace: default
