@@ -1,0 +1,18 @@
+apiVersion: operationalinsights.azure.upbound.io/v1beta1
+kind: Workspace
+metadata:
+name: law-aks-addons-001
+labels:
+example: aks-with-addons
+spec:
+forProvider:
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+example: aks-with-addons
+sku: PerGB2018
+retentionInDays: 30
+tags:
+managed-by: crossplane
+example: aks-with-addons
+purpose: aks-monitoring
