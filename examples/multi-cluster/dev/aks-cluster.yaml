@@ -1,0 +1,67 @@
+apiVersion: containerservice.azure.upbound.io/v1beta1
+kind: KubernetesCluster
+metadata:
+name: aks-dev-001
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: dev
+spec:
+forProvider:
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+environment: dev
+
+```
+dnsPrefix: aks-dev-001
+kubernetesVersion: "1.28"
+
+# Small node pool for development
+defaultNodePool:
+  - name: system
+    nodeCount: 2
+    vmSize: Standard_D2s_v3
+    enableAutoScaling: true
+    minCount: 2
+    maxCount: 3
+    osDiskSizeGb: 30
+    vnetSubnetIdSelector:
+      matchLabels:
+        environment: dev
+        purpose: aks
+
+# System-assigned managed identity
+identity:
+  - type: SystemAssigned
+
+# Network profile
+networkProfile:
+  - networkPlugin: azure
+    networkPolicy: calico
+    dnsServiceIp: 10.12.0.10
+    serviceCidr: 10.12.0.0/24
+    loadBalancerSku: standard
+
+# Minimal add-ons for dev
+addonProfile:
+  - httpApplicationRouting:
+      - enabled: false
+    omsAgent:
+      - enabled: false
+    azurePolicy:
+      - enabled: false
+
+tags:
+  managed-by: crossplane
+  environment: dev
+  purpose: development
+```
+
+providerConfigRef:
+name: default
+
+# Write kubeconfig to secret
+
+writeConnectionSecretToRef:
+name: aks-dev-001-kubeconfig
+namespace: default
