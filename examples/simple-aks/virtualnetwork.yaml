@@ -1,0 +1,17 @@
+apiVersion: network.azure.upbound.io/v1beta1
+kind: VirtualNetwork
+metadata:
+name: vnet-simple-aks
+labels:
+example: simple-aks
+environment: development
+spec:
+forProvider:
+addressSpace:
+- 10.0.0.0/16
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+example: simple-aks
+providerConfigRef:
+name: default
