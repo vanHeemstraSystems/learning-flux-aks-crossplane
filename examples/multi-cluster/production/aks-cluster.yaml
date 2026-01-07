@@ -1,0 +1,103 @@
+apiVersion: containerservice.azure.upbound.io/v1beta1
+kind: KubernetesCluster
+metadata:
+name: aks-production-001
+labels:
+app.kubernetes.io/name: multi-cluster
+environment: production
+spec:
+forProvider:
+location: West Europe
+resourceGroupNameSelector:
+matchLabels:
+environment: production
+
+```
+dnsPrefix: aks-production-001
+kubernetesVersion: "1.28"
+
+# Production node pool with high availability
+defaultNodePool:
+  - name: system
+    nodeCount: 5
+    vmSize: Standard_D4s_v3
+    enableAutoScaling: true
+    minCount: 5
+    maxCount: 10
+    osDiskSizeGb: 128
+    vnetSubnetIdSelector:
+      matchLabels:
+        environment: production
+        purpose: aks
+    # Enable availability zones for HA
+    zones:
+      - "1"
+      - "2"
+      - "3"
+
+# System-assigned managed identity
+identity:
+  - type: SystemAssigned
+
+# Network profile
+networkProfile:
+  - networkPlugin: azure
+    networkPolicy: calico
+    dnsServiceIp: 10.32.0.10
+    serviceCidr: 10.32.0.0/24
+    loadBalancerSku: standard
+
+# Production add-ons (can enable monitoring here)
+addonProfile:
+  - httpApplicationRouting:
+      - enabled: false
+    omsAgent:
+      - enabled: false
+    azurePolicy:
+      - enabled: false
+
+# Production auto-scaler profile
+autoScalerProfile:
+  - balanceSimilarNodeGroups: true
+    expander: least-waste
+    maxGracefulTerminationSec: 600
+    maxNodeProvisionTime: 15m
+    maxUnreadyNodes: 3
+    maxUnreadyPercentage: 45
+    newPodScaleUpDelay: 10s
+    scaleDownDelayAfterAdd: 10m
+    scaleDownDelayAfterDelete: 10s
+    scaleDownDelayAfterFailure: 3m
+    scaleDownUnneeded: 10m
+    scaleDownUnready: 20m
+    scaleDownUtilizationThreshold: 0.5
+    scanInterval: 10s
+    skipNodesWithLocalStorage: false
+    skipNodesWithSystemPods: true
+
+# Maintenance window (production: Sunday early morning)
+maintenanceWindow:
+  - allowed:
+      - day: Sunday
+        hours:
+          - 2
+          - 3
+          - 4
+          - 5
+
+tags:
+  managed-by: crossplane
+  environment: production
+  purpose: production-workloads
+  criticality: high
+  backup: enabled
+```
+
+providerConfigRef:
+name: default
+
+# Write kubeconfig to secret
+
+writeConnectionSecretToRef:
+name: aks-production-001-kubeconfig
+namespace: default
